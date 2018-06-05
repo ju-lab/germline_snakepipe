@@ -1,0 +1,14 @@
+project:
+    PCW
+
+samples:
+    PCW:
+        normal_fastq: ../../Projects/pcw/fastq/PCW_R
+        sex: XX
+        status: 
+          - diseased
+    PDP1:
+        normal_fastq: ../../../kjyi/Projects/temp_20180425_LeeEunYoun/fastq/PDP1/PDP1_R
+        sex: XY
+        status:
+          - diseased
