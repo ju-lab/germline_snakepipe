@@ -1,33 +1,43 @@
-# Snakefile to run FASTQ -> Processed BAM -> basic somatic variant calling (SNV, SV, and CNV)
-# 2018.06.03 Jongsoo Yoon
+# Snakefile to run FASTQ -> Processed BAM -> basic germline calling usiung `Freebayes`
+# Reused Snakefile from somatic pipeline
+# 2018.06.05 Jongsoo Yoon
 
 configfile: 'pathConfig.yaml'
 configfile: 'sampleConfig.yaml'
+
+# import pysam
+
+# # define major contigs in the reference to parallelize Freebayes per chromosome
+# ref = pysam.FastaFile(config['reference'])
+# major_contigs = [str(i) for i in range(1, 23)] + ['chr' + str(i) for i in range(1, 23)] + \
+#                  ['X', 'chrX', 'Y', 'chrY', 'MT', 'chrM']
+
+# chromosomes = [chrom for chrom in ref.references if chrom in major_contigs]
 
 rule all:
     input:
         'done'
 
-
-rule bwa_normal:
+rule bwa_align:
     input:
         bwa = config['bwa'],
         samtools = config['samtools'],
         ref = config['reference'],
-        fq1 = lambda wildcards: config['samples'][wildcards.sample]['normal_fastq'] + '1.fastq.gz',
-        fq2 = lambda wildcards: config['samples'][wildcards.sample]['normal_fastq'] + '2.fastq.gz'
+        fq1 = lambda wildcards: config['samples'][wildcards.sample]['fq1'],
+        fq2 = lambda wildcards: config['samples'][wildcards.sample]['fq2']
 
     output:
-        bam = temp("temp_dna/{sample}_N.temp.bam"),
-        sortedbam = temp('temp_dna/{sample}_N.temp.sorted.bam')
+        bam = temp("temp_dna/{sample}.temp.bam"),
+        sortedbam = temp('temp_dna/{sample}.temp.sorted.bam')
     params:
-        rg = "@RG\tID:{sample}_N\tSM:{sample}_N\tPL:Illumina"
+        rg = "@RG\tID:{sample}\tSM:{sample}\tPL:Illumina"
     log:
-        "logs/{sample}_N.bwa.log"
+        "logs/{sample}.bwa.log"
     threads: 4
     shell:
-        "{input.bwa} mem -t {threads} -R '{params.rg}' {input.ref} {input.fq1} {input.fq2} |"
-        "{input.samtools} view -Sb - > {output.bam}; {input.samtools} sort -@ {threads} -o {output.sortedbam} {output.bam}"
+        "({input.bwa} mem -t {threads} -R '{params.rg}' {input.ref} {input.fq1} {input.fq2} |"
+        "{input.samtools} view -Sb - > {output.bam}; {input.samtools} sort -@ {threads} -o {output.sortedbam} {output.bam}) "
+        " &> {log}"
 
 
 
@@ -36,21 +46,22 @@ rule markdup:
         java = config['java8'], 
         picard = config['picard'],
         samtools = config['samtools'],
-        sortedbam = "temp_dna/{sample}_{tn}.temp.sorted.bam", 
+        sortedbam = "temp_dna/{sample}.temp.sorted.bam", 
     output:
-        mdbam = temp("temp_dna/{sample}_{tn}.temp.sorted.md.bam"),
-        mdbai = temp("temp_dna/{sample}_{tn}.temp.sorted.md.bam.bai")
+        mdbam = temp("temp_dna/{sample}.temp.sorted.md.bam"),
+        mdbai = temp("temp_dna/{sample}.temp.sorted.md.bam.bai")
 
     threads: 1
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
     log:
-        "logs/{sample}_{tn}.md.log"
+        "logs/{sample}.md.log"
     shell:
-        "{input.java} -XX:ParallelGCThreads={threads} -Xmx8g -jar {input.picard} MarkDuplicates "
+        "({input.java} -XX:ParallelGCThreads={threads} -Xmx8g -jar {input.picard} MarkDuplicates "
         "REMOVE_DUPLICATES=true REMOVE_SEQUENCING_DUPLICATES=true I={input.sortedbam} O={output.mdbam} "
         "M={output.mdbam}.metric VALIDATION_STRINGENCY=LENIENT TMP_DIR=md_temp QUIET=true; "
-        "{input.samtools} index {output.mdbam}"
+        "{input.samtools} index {output.mdbam})"
+        " &> {log}"
 
 rule realign:
     input:
@@ -59,21 +70,23 @@ rule realign:
         samtools = config['samtools'],
         ref = config['reference'], 
         knownindel = config['knownindel'], 
-        bam = "temp_dna/{sample}_{tn}.temp.sorted.md.bam", 
+        bam = "temp_dna/{sample}.temp.sorted.md.bam", 
 
     output:
-        realignedbam = temp("temp_dna/{sample}_{tn}.temp.sorted.md.ir.bam"),
-        realignedbai = temp("temp_dna/{sample}_{tn}.temp.sorted.md.ir.bam.bai")
+        realignedbam = temp("temp_dna/{sample}.temp.sorted.md.ir.bam"),
+        realignedbai = temp("temp_dna/{sample}.temp.sorted.md.ir.bam.bai")
     threads: 1
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
+    log:
+        "logs/{sample}.realign.log"
     shell:
-        "{input.java} -Xmx4g -jar {input.gatk} -T RealignerTargetCreator -R {input.ref} "
+        "({input.java} -Xmx4g -jar {input.gatk} -T RealignerTargetCreator -R {input.ref} "
         " -I {input.bam} --known {input.knownindel} -o {output.realignedbam}.intervals; "
         "{input.java} -Xmx4g -jar {input.gatk} -T IndelRealigner -R {input.ref} -I {input.bam} "
         "-targetIntervals {output.realignedbam}.intervals -o {output.realignedbam}; "
-        "{input.samtools} index {output.realignedbam}"
-
+        "{input.samtools} index {output.realignedbam}) "
+        " &> {log}"
 
 rule baserecal:
     input:
@@ -83,48 +96,56 @@ rule baserecal:
         ref = config['reference'], 
         dbsnp = config['dbsnp'], 
         knownindel = config['knownindel'], 
-        bam = "temp_dna/{sample}_{tn}.temp.sorted.md.ir.bam"
+        bam = "temp_dna/{sample}.temp.sorted.md.ir.bam"
     output:
-        recalTable = temp('temp_dna/{sample}_{tn}.recaltable'),
-        recalbam = "dna_bam/{sample}_{tn}.bam"
+        recalTable = temp('temp_dna/{sample}.recaltable'),
+        recalbam = "dna_bam/{sample}.bam"
     threads: 1
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
+    log:
+        "logs/{sample}.baserecal.log"    
     shell:
-        "{input.java} -Xmx4g -jar {input.gatk} -T BaseRecalibrator -R {input.ref} -I {input.bam} -knownSites {input.dbsnp} --knownSites {input.knownindel} -o {output.recalTable}; "
+        "({input.java} -Xmx4g -jar {input.gatk} -T BaseRecalibrator -R {input.ref} -I {input.bam} -knownSites {input.dbsnp} --knownSites {input.knownindel} -o {output.recalTable}; "
         "{input.java} -Xmx4g -jar {input.gatk} -T PrintReads -R {input.ref} -I {input.bam} -BQSR {output.recalTable} -o {output.recalbam} -nct {threads}; "
-        "{input.samtools} index {output.recalbam}"
+        "{input.samtools} index {output.recalbam})"
+        " &> {log}"
 
-rule freebayes:
+rule freebayes_parallel:
     input:
-        inputbams=expand("dna_bam/{sample}_{tn}.bam", sample=config["samples"], tn=['N']), 
-        freebayes = config['freebayes'], 
+        inputbams=expand("dna_bam/{sample}.bam", sample=config["samples"]), 
+        freebayes_parallel = config['freebayes_parallel'], 
         ref = config['reference'], 
-    params:
-        project = config['project']
-    output:
-        combined_vcf = "variants/{params.project}.everyone.freebayes.vcf"
-    threads: 1
+        fasta_generate_regions = config['fasta_generate_regions']
 
+    output:
+        combined_vcf = "variants/everyone.freebayes.vcf",
+    threads: 12
+    log:
+        "logs/freebayes.log"
     run:
         input_string = ['-b' + bam for bam in input.inputbams]
         input_string = " ".join(input_string)
-        shell("{input.freebayes} -f {input.ref} -v {output.combined_vcf} \
+        shell("({input.freebayes_parallel} <({input.fasta_generate_regions} {input.ref} 100000) {threads} -f {input.ref} -v {params.perchrom_vcf} \
         --standard-filters -j --min-coverage 10 -F 0.2 -C 2 \
-        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {inputstring}")
+        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {inputstring}) \
+        &> {log}")
+
 
 rule decompose:
     # decomposes multiallelic primitives into SNPs and indels
     input:
-        combined_vcf = "variants/{params.project}.everyone.freebayes.vcf", 
+        combined_vcf = "variants/everyone.freebayes.vcf", 
         vcfallelicprimitives = config['vcfallelicprimitives'], 
-
     params:
         project = config['project']
+    log:
+        "logs/{params.project}.decompose.log"
     output:
         decomposed_vcf = "variants/{params.project}.everyone.freebayes.dc.vcf"
     shell:
-        "{input.vcfallelicprimitives} -kg {input.combined_vcf} > {output.decomposed_vcf}"
+        "({input.vcfallelicprimitives} -kg {input.combined_vcf} > {output.decomposed_vcf}) "
+        "&> {log}"
 
 rule leftnorm:
     input:
@@ -133,10 +154,13 @@ rule leftnorm:
         vt = config['vt'], 
     params:
         project = config['project']
+    log:
+        "logs/{params.project}.leftnorm.log"
     output:
         normalized_vcf = "variants/{params.project}.everyone.freebayes.dc.norm.vcf"
     shell:
-        "{input.vt} normalize -r {input.ref} {input.decomposed_vcf} > {output.normalized_vcf}"
+        "({input.vt} normalize -r {input.ref} {input.decomposed_vcf} > {output.normalized_vcf}) "
+        "&> {log}"
 
 
 rule finish:

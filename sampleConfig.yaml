@@ -1,14 +1,16 @@
 project:
-    PCW
+    PF1
 
 samples:
-    PCW:
-        normal_fastq: ../../Projects/pcw/fastq/PCW_R
+    PF1:
+        fq1: ../../Projects/pcw/fastq/PCW_R1.fastq.gz
+        fq2: ../../Projects/pcw/fastq/PCW_R2.fastq.gz
         sex: XX
         status: 
           - diseased
     PDP1:
-        normal_fastq: ../../../kjyi/Projects/temp_20180425_LeeEunYoun/fastq/PDP1/PDP1_R
+        fq1: ../../../kjyi/Projects/temp_20180425_LeeEunYoun/fastq/PDP1/PDP1_R1.fastq.gz
+        fq2: ../../../kjyi/Projects/temp_20180425_LeeEunYoun/fastq/PDP1/PDP1_R2.fastq.gz
         sex: XY
         status:
           - diseased

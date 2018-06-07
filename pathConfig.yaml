@@ -1,5 +1,6 @@
 reference: /home/users/data/01_reference/human_g1k_v37/human_g1k_v37.fasta
 
+
 # basic languages
 java8: /home/users/cjyoon/tools/jdk1.8.0_171/bin/java
 
@@ -16,11 +17,15 @@ dbsnp_mutect: /home/users/data/02_annotation/03_mutect/dbsnp_132_b37.leftAligned
 
 # snv variant callers
 freebayes: /home/users/cjyoon/anaconda3/bin/freebayes
-
+freebayes_parallel: /home/users/cjyoon/anaconda3/bin/freebayes-parallel
+fasta_generate_regions: scripts/fasta_generate_regions.py # for splitting ref in order to parallelize
 # variant filters
 passFilter: scripts/passFilter
 vcfallelicprimitives: /home/users/cjyoon/anaconda3/bin/vcfallelicprimitives
 vt: /home/users/cjyoon/anaconda3/bin/vt
+bcftools: /home/users/cjyoon/anaconda3/bin/bcftools
+bgzip: /home/users/cjyoon/anaconda3/bin/bgzip
+tabix: /home/users/cjyoon/anaconda3/bin/tabix
 
 # variant annotator
 vep: /home/users/cjyoon/ensembl-vep/vep

@@ -1,0 +1,16 @@
+#!/home/users/cjyoon/anaconda3/bin/python
+# downloaded from https://github.com/vcflib/vcflib/blob/master/scripts/vcffirstheader on 2018.06.07, edited to be python3 compatible. 
+import sys
+
+header=True
+for line in sys.stdin:
+    if line.startswith('##'):
+        if header:
+            print(line.strip())
+        continue
+    elif line.startswith('#'):
+        if header:
+           print(line.strip())
+           header=False
+        continue
+    print(line.strip())

@@ -121,7 +121,7 @@ if args.W: add= " -W \"" + args.W + "\""
 
 nodes=""
 ppn=""
-mem=""
+mem_mb=""
 walltime=""
 
 if "threads" in job_properties:
@@ -131,17 +131,17 @@ if "resources" in job_properties:
     resources = job_properties["resources"]
     if "nodes" in resources: nodes="nodes=" + str(resources["nodes"])
     if ppn and not nodes : nodes="nodes=1"
-    if "mem" in resources: mem="mem=" + str(resources["mem"])
+    if "mem_mb" in resources: mem="mem=" + str(resources["mem_mb"])
     if "walltime" in resources: walltime="walltime=" + str(resources["walltime"])
 
-if nodes or ppn or mem or walltime: resourceparams = " -l \""
+if nodes or ppn or mem_mb or walltime: resourceparams = " -l \""
 if nodes: resourceparams = resourceparams + nodes
 if nodes and ppn: resourceparams = resourceparams + ":" + ppn
-if nodes and mem: resourceparams = resourceparams + ","
-if mem: resourceparams = resourceparams + mem
-if walltime and (nodes or mem): resourceparams = resourceparams + ","
+if nodes and mem_mb: resourceparams = resourceparams + ","
+if mem_mb: resourceparams = resourceparams + mem_mb
+if walltime and (nodes or mem_mb): resourceparams = resourceparams + ","
 if walltime: resourceparams = resourceparams + walltime
-if nodes or mem or walltime: resourceparams = resourceparams + "\""
+if nodes or mem_mb or walltime: resourceparams = resourceparams + "\""
 
 cmd = "qsub {a}{A}{b}{c}{C}{d}{D}{e}{f}{h}{j}{l}{m}{M}{N}{o}{p}{P}{q}{t}{u}{v}{V}{w}{W}{rp}{dep}{ex}".format(\
 	a=atime,A=acc_string,b=pbs_time,c=chkpt,C=pref,d=dd,D=rd,e=se,f=ft,h=hold,j=j,l=resource,m=mail,M=mailuser,\
