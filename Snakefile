@@ -1,6 +1,6 @@
 # Snakefile to run FASTQ -> Processed BAM -> basic germline calling usiung `Freebayes`
 # Reused Snakefile from somatic pipeline
-# 2018.06.05 Jongsoo Yoon
+# 2018.06.14 Jongsoo Yoon
 
 configfile: 'pathConfig.yaml'
 configfile: 'sampleConfig.yaml'
@@ -126,46 +126,32 @@ rule freebayes_parallel:
     run:
         input_string = ['-b' + bam for bam in input.inputbams]
         input_string = " ".join(input_string)
-        shell("({input.freebayes_parallel} <({input.fasta_generate_regions} {input.ref} 100000) {threads} -f {input.ref} -v {params.perchrom_vcf} \
+        shell("({input.freebayes_parallel} <({input.fasta_generate_regions} {input.ref} 100000) {threads} -f {input.ref} \
         --standard-filters -j --min-coverage 10 -F 0.2 -C 2 \
-        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {inputstring}) \
+        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {inputstring} > {output.comvined_vcf}) \
         &> {log}")
 
 
-rule decompose:
+rule vt_decompose_normalize:
     # decomposes multiallelic primitives into SNPs and indels
     input:
         combined_vcf = "variants/everyone.freebayes.vcf", 
-        vcfallelicprimitives = config['vcfallelicprimitives'], 
-    params:
-        project = config['project']
-    log:
-        "logs/{params.project}.decompose.log"
-    output:
-        decomposed_vcf = "variants/{params.project}.everyone.freebayes.dc.vcf"
-    shell:
-        "({input.vcfallelicprimitives} -kg {input.combined_vcf} > {output.decomposed_vcf}) "
-        "&> {log}"
-
-rule leftnorm:
-    input:
-        decomposed_vcf = "variants/{params.project}.everyone.freebayes.dc.vcf", 
         ref = config['reference'], 
-        vt = config['vt'], 
+        vt = config['vt']
     params:
         project = config['project']
     log:
-        "logs/{params.project}.leftnorm.log"
+        "logs/{params.project}.vt.log"
     output:
-        normalized_vcf = "variants/{params.project}.everyone.freebayes.dc.norm.vcf"
+        vt_vcf = "variants/{params.project}.everyone.freebayes.vt.vcf"
     shell:
-        "({input.vt} normalize -r {input.ref} {input.decomposed_vcf} > {output.normalized_vcf}) "
+        "({input.vt} decompose -s {input.combined_vcf} | {input.vt} normalize -r {input.ref} - > {output.vt_vcf}) "
         "&> {log}"
 
 
 rule finish:
     input:
-        final_vcf = "variants/{params.project}.everyone.freebayes.dc.norm.vcf"
+        final_vcf = "variants/{params.project}.everyone.freebayes.vt.vcf"
     params:
         project = config['project']
     output:
