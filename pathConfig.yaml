@@ -17,7 +17,7 @@ dbsnp_mutect: /home/users/data/02_annotation/03_mutect/dbsnp_132_b37.leftAligned
 
 # snv variant callers
 freebayes: /home/users/cjyoon/anaconda3/bin/freebayes
-freebayes_parallel: /home/users/cjyoon/anaconda3/bin/freebayes-parallel
+freebayes_parallel: scripts/freebayes-parallel
 fasta_generate_regions: scripts/fasta_generate_regions.py # for splitting ref in order to parallelize
 # variant filters
 passFilter: scripts/passFilter
@@ -26,6 +26,11 @@ vt: /home/users/cjyoon/anaconda3/bin/vt
 bcftools: /home/users/cjyoon/anaconda3/bin/bcftools
 bgzip: /home/users/cjyoon/anaconda3/bin/bgzip
 tabix: /home/users/cjyoon/anaconda3/bin/tabix
+
+
+# delly 
+delly: /home/users/cjyoon/tools/delly/src/delly
+dellymask: /home/users/cjyoon/tools/delly/excludeTemplates/human.hg19.excl.tsv
 
 # variant annotator
 vep: /home/users/cjyoon/ensembl-vep/vep

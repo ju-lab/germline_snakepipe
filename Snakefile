@@ -128,7 +128,7 @@ rule freebayes_parallel:
         input_string = " ".join(input_string)
         shell("({input.freebayes_parallel} <({input.fasta_generate_regions} {input.ref} 100000) {threads} -f {input.ref} \
         --standard-filters -j --min-coverage 10 -F 0.2 -C 2 \
-        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {inputstring} > {output.comvined_vcf}) \
+        --read-snp-limit 3 --read-mismatch-limit 3 --ploidy 2 {input_string} > {output.combined_vcf}) \
         &> {log}")
 
 
